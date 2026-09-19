@@ -1,0 +1,18 @@
+{
+  "name": "pup/custom-fishing",
+  "description": "Custom Fishing Plugin For PocketMine-MP",
+  "authors": [
+    {
+      "name": "pupggers",
+      "email": "pupggers@kyro.gg"
+    }
+  ],
+  "require": {
+    "axolotl-pm/pocketmine-mp": "^5.49.1"
+  },
+  "autoload": {
+    "classmap": [
+      "src"
+    ]
+  }
+}
