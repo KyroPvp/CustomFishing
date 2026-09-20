@@ -1,0 +1,94 @@
+# Every fish must use one of the 4 vanilla fish items:
+#   cod , salmon , pufferfish , tropicalfish
+fishes:
+  cod:
+    display-name: "Cod"
+    item: "cod"
+    rarity: common
+    weight:
+      min: 0.5
+      max: 3.0
+  silver_salmon:
+    display-name: "Silver Salmon"
+    item: "salmon"
+    rarity: common
+    weight:
+      min: 1.0
+      max: 4.0
+  river_perch:
+    display-name: "River Perch"
+    item: "cod"
+    rarity: common
+    weight:
+      min: 0.3
+      max: 1.5
+  blowfish:
+    display-name: "Blowfish"
+    item: "pufferfish"
+    rarity: uncommon
+    weight:
+      min: 0.4
+      max: 1.8
+  copper_trout:
+    display-name: "Copper Trout"
+    item: "salmon"
+    rarity: uncommon
+    weight:
+      min: 1.5
+      max: 5.0
+  neon_tetra:
+    display-name: "Neon Tetra"
+    item: "tropicalfish"
+    rarity: uncommon
+    weight:
+      min: 0.05
+      max: 0.3
+  clownfish:
+    display-name: "Clownfish"
+    item: "tropicalfish"
+    rarity: rare
+    weight:
+      min: 0.1
+      max: 0.6
+  golden_carp:
+    display-name: "Golden Carp"
+    item: "cod"
+    rarity: rare
+    weight:
+      min: 3.0
+      max: 9.0
+  spiked_puffer:
+    display-name: "Spiked Puffer"
+    item: "pufferfish"
+    rarity: epic
+    weight:
+      min: 1.0
+      max: 3.5
+  moonlit_salmon:
+    display-name: "Moonlit Salmon"
+    item: "salmon"
+    rarity: epic
+    weight:
+      min: 4.0
+      max: 12.0
+  abyssal_angler:
+    display-name: "Abyssal Angler"
+    item: "cod"
+    rarity: legendary
+    weight:
+      min: 20.0
+      max: 60.0
+  rainbow_koi:
+    display-name: "Rainbow Koi"
+    item: "tropicalfish"
+    rarity: legendary
+    weight:
+      min: 2.0
+      max: 8.0
+  leviathan_fry:
+    display-name: "Leviathan Fry"
+    item: "salmon"
+    rarity: mythic
+    weight:
+      min: 80.0
+      max: 200.0

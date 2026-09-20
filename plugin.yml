@@ -3,3 +3,13 @@ main: pup\fishing\Main
 author: pup
 api: 5.0.0
 version: 1.0.0
+commands:
+  fishrod:
+    description: Give yourself a custom fishing rod
+    usage: /fishrod [rodId]
+    permission: pup.fishing.give
+
+permissions:
+  pup.fishing.give:
+    description: Allows giving custom rods
+    default: op

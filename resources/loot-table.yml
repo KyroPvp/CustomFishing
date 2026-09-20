@@ -1,0 +1,55 @@
+# Three tables: fish, junk, treasure. A rod decides how often each table is used (see rods.yml).
+# Weights are RELATIVE: they don't need to add up to 100.
+#
+# An entry is ONE of:
+#   rarity: <tier>     -> "a random fish of that rarity" (best for hundreds of fish)
+#   fish: <fish_id>    -> one specific fish from fish.yml
+#   item: <name>       -> a normal item (junk/treasure), with optional count/name
+loot-tables:
+  fish:
+    - rarity: common
+      weight: 60
+    - rarity: uncommon
+      weight: 25
+    - rarity: rare
+      weight: 10
+    - rarity: epic
+      weight: 4
+    - rarity: legendary
+      weight: 0.9
+    - rarity: mythic
+      weight: 0.1
+
+  junk:
+    - item: stick
+      weight: 30
+      count: { min: 1, max: 3 }
+    - item: string
+      weight: 20
+      count: { min: 1, max: 2 }
+    - item: bowl
+      weight: 15
+    - item: bone
+      weight: 15
+    - item: rotten_flesh
+      weight: 20
+
+  treasure:
+    - item: name_tag
+      weight: 40
+    - item: emerald
+      weight: 25
+      count: { min: 1, max: 4 }
+    - item: diamond
+      weight: 5
+      name: "&bShiny Find"
+
+    # A custom rod from rods.yml as a catch:
+    - rod: angler
+      weight: 3
+    - item: diamond_sword
+      weight: 2
+      name: "&bLucky Blade"
+      enchantments:
+        sharpness: { min: 1, max: 3 }
+        unbreaking: 2

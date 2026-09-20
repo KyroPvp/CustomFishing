@@ -1,0 +1,58 @@
+# "default" is REQUIRED: plain vanilla rod.
+# table-weights:      relative chance of rolling each loot table (fish / junk / treasure)
+# rarity-multipliers: multiplies the weight of "rarity:" entries in the fish table (missing = 1.0)
+rods:
+  default:
+    display-name: "&fFishing Rod"
+    table-weights:
+      fish: 85
+      junk: 10
+      treasure: 5
+
+  angler:
+    display-name: "&aAngler's Rod"
+    lore:
+      - "&7Less junk, better fish."
+    table-weights:
+      fish: 92
+      junk: 4
+      treasure: 4
+    rarity-multipliers:
+      uncommon: 1.3
+      rare: 1.5
+
+  treasure_hunter:
+    display-name: "&6Treasure Hunter's Rod"
+    lore:
+      - "&7Loves shiny things."
+    table-weights:
+      fish: 60
+      junk: 5
+      treasure: 35
+
+  mythic_rod:
+    display-name: "&cMythic Rod"
+    lore:
+      - "&7Rare fish flock to this rod."
+    table-weights:
+      fish: 95
+      junk: 0
+      treasure: 5
+    rarity-multipliers:
+      common: 0.5
+      rare: 2.0
+      epic: 3.0
+      legendary: 5.0
+      mythic: 10.0
+
+  # Rods can carry enchantments (fixed level or { min, max }).
+  sturdy_rod:
+    display-name: "&eSturdy Rod"
+    lore:
+      - "&7Built to last."
+    table-weights:
+      fish: 88
+      junk: 8
+      treasure: 4
+    enchantments:
+      unbreaking: 3

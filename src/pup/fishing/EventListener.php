@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace pup\fishing;
 
-use pocketmine\block\Air;
 use pocketmine\block\Water;
 use pocketmine\entity\animation\ArmSwingAnimation;
 use pocketmine\entity\Location;
@@ -13,16 +12,26 @@ use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerItemUseEvent;
 use pocketmine\event\player\PlayerQuitEvent;
 use pocketmine\item\Durable;
+use pocketmine\item\Item;
 use pocketmine\item\ItemTypeIds;
-use pocketmine\item\VanillaItems;
 use pocketmine\math\Vector3;
 use pocketmine\player\Player;
 use pocketmine\world\sound\ThrowSound;
+use pocketmine\world\sound\XpLevelUpSound;
 use pup\fishing\entities\FishingHook;
 use pup\fishing\session\SessionManager;
+use Random\RandomException;
 
 final class EventListener implements Listener
 {
+    private const float PITCH_NEAR = 60.0;
+    private const float PITCH_FAR = -30.0;
+
+    private const int MAX_SCAN_DEPTH = 16;
+
+    /**
+     * @throws RandomException
+     */
     public function onPlayerItemUse(PlayerItemUseEvent $event): void
     {
         $item = $event->getItem();
@@ -43,7 +52,7 @@ final class EventListener implements Listener
         if (!$manager->isFishing($player)) {
             $this->castLine($player, $item);
         } else {
-            $this->reelIn($player, $manager);
+            $this->reelIn($player, $manager, $item);
         }
 
         $player->broadcastAnimation(new ArmSwingAnimation($player));
@@ -51,24 +60,26 @@ final class EventListener implements Listener
 
     private function castLine(Player $player, Durable $item): void
     {
-        $location = $player->getLocation();
-        $world = $player->getWorld();
-        $targetPos = $this->getTargetPosition($player, rand(6, 10));
+        $castPos = $this->findCastPosition($player);
 
-        $block = $world->getBlockAt($targetPos->getFloorX(), $targetPos->getFloorY(), $targetPos->getFloorZ());
-
-        if (!($block instanceof Water) && !($block instanceof Air)) {
+        if ($castPos === null) {
             return;
         }
 
-        $hook = new FishingHook(Location::fromObject($targetPos, $world, $location->yaw, $location->pitch), $player);
+        $location = $player->getLocation();
+        $world = $player->getWorld();
+
+        $hook = new FishingHook(Location::fromObject($castPos, $world, $location->yaw, $location->pitch), $player);
         $hook->spawnToAll();
         $world->addSound($location, new ThrowSound());
         $item->applyDamage(1);
         $player->getInventory()->setItemInHand($item);
     }
 
-    private function reelIn(Player $player, SessionManager $manager): void
+    /**
+     * @throws RandomException
+     */
+    private function reelIn(Player $player, SessionManager $manager, Item $rodItem): void
     {
         $session = $manager->getSession($player);
         if ($session === null) {
@@ -86,37 +97,74 @@ final class EventListener implements Listener
         $hook->flagForDespawn();
 
         if ($caughtSomething) {
-            $this->handleFishingDrop($player, $dropPosition);
+            $this->handleFishingDrop($player, $dropPosition, $rodItem);
         }
     }
 
-    private function getTargetPosition(Player $player, float $distance = 6.0): Vector3
+    private function findCastPosition(Player $player): ?Vector3
     {
-        return $player->getEyePos()->addVector($player->getDirectionVector()->multiply($distance));
-    }
-
-    private function handleFishingDrop(Player $player, Vector3 $dropPosition): void
-    {
+        $location = $player->getLocation();
         $world = $player->getWorld();
 
-        $item = clone VanillaItems::RAW_FISH();
-        $item->setLore(["fishing_animation_item"]);
-        $item->setCount(1);
+        $t = (self::PITCH_NEAR - $location->pitch) / (self::PITCH_NEAR - self::PITCH_FAR);
+        $t = max(0.0, min(1.0, $t));
+        $distance = 1 + $t * (10 - 1);
 
-        $itemEntity = new ItemEntity(Location::fromObject($dropPosition->add(0, 2, 0), $world, lcg_value() * 360, 0), $item);
+        $yaw = deg2rad($location->yaw);
+        $x = $location->x - sin($yaw) * $distance;
+        $z = $location->z + cos($yaw) * $distance;
+
+        $blockX = (int) floor($x);
+        $blockZ = (int) floor($z);
+        $eyeY = (int) floor($player->getEyePos()->y);
+
+        for ($y = $eyeY; $y >= $eyeY - self::MAX_SCAN_DEPTH; $y--) {
+            $block = $world->getBlockAt($blockX, $y, $blockZ);
+
+            if ($block instanceof Water) {
+                return new Vector3($x, $y + 0.9, $z);
+            }
+            if ($block->isSolid()) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @throws RandomException
+     */
+    private function handleFishingDrop(Player $player, Vector3 $dropPosition, Item $rodItem): void
+    {
+        $main = Main::getInstance();
+        $world = $player->getWorld();
+
+        $rod = $main->getRodManager()->getRodFromItem($rodItem);
+        $caught = $main->getLootTableManager()->rollCatch($rod);
+
+        $display = clone $caught;
+        $display->setCount(1);
+        $display->setLore(["fishing_animation_item"]);
+        $name = $display->hasCustomName() ? $display->getCustomName() : $display->getName();
+
+
+        $itemEntity = new ItemEntity(Location::fromObject($dropPosition->add(0, 2, 0), $world, lcg_value() * 360, 0), $display);
         $itemEntity->setPickupDelay(300);
         $itemEntity->setDespawnDelay(60);
-        $itemEntity->setNameTag($item->getName()); //TODO: Custom name?
+        $itemEntity->setNameTag($name);
         $itemEntity->setNameTagVisible();
         $itemEntity->setNameTagAlwaysVisible();
         $itemEntity->setHasGravity(false);
         $itemEntity->spawnToAll();
 
-        if ($player->getInventory()->canAddItem($item)) {
-            $player->getInventory()->addItem($item);
+        if ($player->getInventory()->canAddItem($caught)) {
+            $player->getInventory()->addItem($caught);
         } else {
-            $world->dropItem($dropPosition->add(0, 2, 0), $item);
+            $world->dropItem($dropPosition->add(0, 2, 0), $caught);
         }
+
+        $world->addSound($dropPosition, new XpLevelUpSound(30));
     }
 
     public function onPlayerQuit(PlayerQuitEvent $event): void
