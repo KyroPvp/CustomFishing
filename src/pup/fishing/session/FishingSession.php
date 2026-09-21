@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace pup\fishing\session;
 
+use pocketmine\item\ItemTypeIds;
 use pocketmine\math\Vector3;
+use pocketmine\player\Player;
 use pocketmine\world\particle\BubbleParticle;
 use pup\fishing\entities\FishingHook;
+use pup\fishing\items\rods\CustomRod;
+use pup\fishing\items\rods\RodManager;
 use Random\RandomException;
 
 final class FishingSession
@@ -27,9 +31,30 @@ final class FishingSession
 
     public function __construct(
         private readonly FishingHook $hook,
-        private readonly int $waitChance = 120
+        private readonly CustomRod $rod,
+        private readonly int $slot,
+        private readonly int $waitChance = 60
     ) {
         $this->waitTimer = $this->waitChance * 2;
+    }
+
+    public function getRod(): CustomRod
+    {
+        return $this->rod;
+    }
+
+    /** True only if the player is still holding the exact rod they cast with. */
+    public function isHoldingCastRod(Player $player, RodManager $rods): bool
+    {
+        $inventory = $player->getInventory();
+
+        if ($inventory->getHeldItemIndex() !== $this->slot) {
+            return false;
+        }
+
+        $held = $inventory->getItemInHand();
+        return $held->getTypeId() === ItemTypeIds::FISHING_ROD
+            && $rods->getRodFromItem($held)->getId() === $this->rod->getId();
     }
 
     public function getHook(): FishingHook
@@ -83,7 +108,7 @@ final class FishingSession
     {
         $hookPos = $this->hook->getPosition();
 
-        for ($i = 0; $i < $tickDiff; $i++) {
+        for ($i = 0; $i < min($tickDiff, 5); $i++) {
             $this->fishX += ($hookPos->x - $this->fishX) * self::ATTRACT_SPEED;
             $this->fishZ += ($hookPos->z - $this->fishZ) * self::ATTRACT_SPEED;
 

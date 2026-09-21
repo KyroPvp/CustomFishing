@@ -24,44 +24,49 @@ use Random\RandomException;
 
 final class FishingHook extends Projectile
 {
-    protected bool $touchWaterSound = false;
+    private const MAX_VERTICAL_SPEED = 0.1;
+    private const MAX_SURFACE_SCAN = 16;
     public CompoundTag $compTag;
+    protected bool $touchWaterSound = false;
+
+    public function __construct(Location $location, ?Entity $shootingEntity, ?CompoundTag $nbt = null)
+    {
+        parent::__construct($location, $shootingEntity, $nbt);
+        $this->setCanSaveWithChunk(false);
+        if (!($shootingEntity instanceof Player)) {
+            $this->flagForDespawn();
+        }
+    }
+
+    public function flagForDespawn(): void
+    {
+        $owner = $this->getOwningEntity();
+
+        if ($owner instanceof Player) {
+            Main::getInstance()->getSessionManager()->stopFishing($owner);
+        }
+
+        parent::flagForDespawn();
+    }
 
     public static function getNetworkTypeId(): string
     {
         return EntityIds::FISHING_HOOK;
     }
 
-    protected function getInitialDragMultiplier(): float
+    public function initEntity(CompoundTag $nbt): void
     {
-        return 0;
+        $this->compTag = $nbt;
+        parent::initEntity($nbt);
     }
 
-    protected function getInitialGravity(): float
-    {
-        return 0;
-    }
+    protected function getInitialGravity(): float { return 0.04; }
+
+    protected function getInitialDragMultiplier(): float { return 0.01; }
 
     protected function getInitialSizeInfo(): EntitySizeInfo
     {
         return new EntitySizeInfo(0.25, 0.25);
-    }
-
-    public function initEntity(CompoundTag $nbt): void
-    {
-        $this->compTag = $nbt;
-        $this->setHasGravity(false);
-        parent::initEntity($nbt);
-    }
-
-    public function __construct(Location $location, ?Entity $shootingEntity, ?CompoundTag $nbt = null)
-    {
-        parent::__construct($location, $shootingEntity, $nbt);
-        if ($shootingEntity instanceof Player) {
-            Main::getInstance()->getSessionManager()->startFishing($shootingEntity, $this);
-        } else {
-            $this->flagForDespawn();
-        }
     }
 
     /**
@@ -72,13 +77,18 @@ final class FishingHook extends Projectile
         $hasUpdate = parent::entityBaseTick($tickDiff);
         $player = $this->getOwningEntity();
 
-        $this->driftTowardsWaterSurface();
-
         if ($player instanceof Player) {
             $session = Main::getInstance()->getSessionManager()->getSession($player);
-            if ($session !== null) {
-                $this->tickSession($session, $player, $tickDiff);
+            $main = Main::getInstance();
+            if (
+                $session === null ||
+                !$session->isHoldingCastRod($player, $main->getRodManager())
+            ) {
+                $this->flagForDespawn();
+                return true;
             }
+
+            $this->tickSession($session, $player, $tickDiff);
 
             if ($this->shouldDespawnFor($player)) {
                 $this->flagForDespawn();
@@ -89,7 +99,7 @@ final class FishingHook extends Projectile
             $hasUpdate = true;
         }
 
-        if ($this->isOverWater() && !$this->touchWaterSound) {
+        if ($this->isInWaterBlock() && !$this->touchWaterSound) {
             $this->getWorld()->addSound($this->location, new CauldronEmptyWaterSound());
             $this->touchWaterSound = true;
         }
@@ -102,7 +112,7 @@ final class FishingHook extends Projectile
      */
     private function tickSession(FishingSession $session, Player $player, int $tickDiff): void
     {
-        if (!$this->isOverWater()) {
+        if (!$this->isInWaterBlock()) {
             return;
         }
 
@@ -120,45 +130,50 @@ final class FishingHook extends Projectile
         }
     }
 
+    public function isInWaterBlock(): bool
+    {
+        $p = $this->location;
+        return $this->getWorld()->getBlockAt($p->getFloorX(), $p->getFloorY(), $p->getFloorZ()) instanceof Water;
+    }
+
     private function shouldDespawnFor(Player $player): bool
     {
-        if (
-            $player->getInventory()->getItemInHand()->getTypeId() !== ItemTypeIds::FISHING_ROD ||
-            !$player->isAlive() ||
-            $player->isClosed() ||
-            $player->getLocation()->getWorld()->getFolderName() !== $this->getLocation()->getWorld()->getFolderName()
-        ) {
-            return true;
+        return !$player->isAlive()
+            || $player->isClosed()
+            || $player->getLocation()->getWorld()->getFolderName() !== $this->getLocation()->getWorld()->getFolderName()
+            || $player->getPosition()->distanceSquared($this->getPosition()) >= 16 ** 2;
+    }
+
+    protected function tryChangeMovement(): void
+    {
+        $surfaceY = $this->findSurfaceY();
+        if ($surfaceY === null) {
+            parent::tryChangeMovement();
+            return;
         }
 
-        return $player->getPosition()->distance($this->getPosition()) >= 32;
+        $dy = ($surfaceY - $this->location->y) * 0.3;
+        $dy = max(-self::MAX_VERTICAL_SPEED, min(self::MAX_VERTICAL_SPEED, $dy));
+
+        $this->motion = new Vector3($this->motion->x * 0.5, $dy, $this->motion->z * 0.5);
     }
 
-    private function driftTowardsWaterSurface(): void
+    private function findSurfaceY(): ?float
     {
-        $highestBlockY = $this->getPosition()->getWorld()->getHighestBlockAt(
-            $this->getPosition()->getFloorX(),
-            $this->getPosition()->getFloorZ()
-        );
-        $y = $highestBlockY - $this->getPosition()->y + 1;
-        $this->setMotion(new Vector3(0, $y, 0));
-    }
+        $world = $this->getWorld();
+        $x = $this->location->getFloorX();
+        $z = $this->location->getFloorZ();
+        $y = $this->location->getFloorY();
 
-    public function flagForDespawn(): void
-    {
-        $owner = $this->getOwningEntity();
-
-        if ($owner instanceof Player) {
-            Main::getInstance()->getSessionManager()->stopFishing($owner);
+        if (!$world->getBlockAt($x, $y, $z) instanceof Water) {
+            return null;
         }
 
-        parent::flagForDespawn();
-    }
+        $limit = $y + self::MAX_SURFACE_SCAN;
+        while ($y < $limit && $world->getBlockAt($x, $y + 1, $z) instanceof Water) {
+            $y++;
+        }
 
-    public function isOverWater(): bool
-    {
-        $pos = $this->getPosition();
-        $block = $this->getWorld()->getBlockAt($pos->getFloorX(), $pos->getFloorY() - 1, $pos->getFloorZ());
-        return $block instanceof Water;
+        return $y + (8 / 9);
     }
 }

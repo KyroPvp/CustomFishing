@@ -47,6 +47,9 @@ final readonly class EnchantSpec
             }
             $min = max(1, $min);
             $max = max($min, $max);
+            if($max > $enchantment->getMaxLevel()) {
+                $max = $enchantment->getMaxLevel();
+            }
 
             $specs[] = new self($enchantment, $min, $max);
         }

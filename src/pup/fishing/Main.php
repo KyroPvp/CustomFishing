@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace pup\fishing;
 
+use Exception;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\entity\EntityDataHelper;
@@ -18,7 +19,6 @@ use pup\fishing\items\fish\FishManager;
 use pup\fishing\items\loottable\LootTableManager;
 use pup\fishing\items\rods\RodManager;
 use pup\fishing\session\SessionManager;
-use RuntimeException;
 
 final class Main extends PluginBase
 {
@@ -54,7 +54,7 @@ final class Main extends PluginBase
             $this->rodManager->load($this->yaml("rods.yml"), $logger);
             $this->lootTableManager->linkRods($this->rodManager, $logger);
 
-        } catch (RuntimeException $e) {
+        } catch (Exception $e) {
             $this->getLogger()->critical("Config error: " . $e->getMessage());
             $this->getServer()->getPluginManager()->disablePlugin($this);
             return;
@@ -64,6 +64,12 @@ final class Main extends PluginBase
         EntityFactory::getInstance()->register(FishingHook::class, function (World $world, CompoundTag $nbt): FishingHook {
             return new FishingHook(EntityDataHelper::parseLocation($nbt, $world), null, $nbt);
         }, ["FishingHook"]);
+    }
+
+    public function onDisable(): void
+    {
+        $sessionManager = $this->getSessionManager();
+        $sessionManager->closeSessions();
     }
 
     private function yaml(string $file): Config

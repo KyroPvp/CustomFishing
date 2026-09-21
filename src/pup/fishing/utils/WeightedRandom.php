@@ -25,7 +25,7 @@ final class WeightedRandom
             return null;
         }
 
-        $roll = random_int(0, $total); // random float between 0 and $total
+        $roll = (random_int(0, PHP_INT_MAX) / PHP_INT_MAX) * $total;
         $lastValid = null;
 
         foreach ($weights as $key => $weight) {
