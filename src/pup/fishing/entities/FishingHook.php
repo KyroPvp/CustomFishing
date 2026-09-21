@@ -20,6 +20,7 @@ use pup\fishing\animations\FishHookAnimation;
 use pup\fishing\animations\FishHookAnimationType;
 use pup\fishing\Main;
 use pup\fishing\session\FishingSession;
+use Random\RandomException;
 
 final class FishingHook extends Projectile
 {
@@ -63,6 +64,9 @@ final class FishingHook extends Projectile
         }
     }
 
+    /**
+     * @throws RandomException
+     */
     protected function entityBaseTick(int $tickDiff = 1): bool
     {
         $hasUpdate = parent::entityBaseTick($tickDiff);
@@ -93,6 +97,9 @@ final class FishingHook extends Projectile
         return $hasUpdate;
     }
 
+    /**
+     * @throws RandomException
+     */
     private function tickSession(FishingSession $session, Player $player, int $tickDiff): void
     {
         if (!$this->isOverWater()) {

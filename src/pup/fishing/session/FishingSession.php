@@ -7,6 +7,7 @@ namespace pup\fishing\session;
 use pocketmine\math\Vector3;
 use pocketmine\world\particle\BubbleParticle;
 use pup\fishing\entities\FishingHook;
+use Random\RandomException;
 
 final class FishingSession
 {
@@ -41,6 +42,9 @@ final class FishingSession
         return $this->caught;
     }
 
+    /**
+     * @throws RandomException
+     */
     public function tick(int $tickDiff): bool
     {
         if (!$this->attracted) {
@@ -48,7 +52,7 @@ final class FishingSession
             if ($this->waitTimer > 0) {
                 return false;
             }
-            if (mt_rand(1, 100) <= 90) {
+            if (random_int(1, 100) <= 90) {
                 $this->startAttracting();
             } else {
                 $this->waitTimer = $this->waitChance;

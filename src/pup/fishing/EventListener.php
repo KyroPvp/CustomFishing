@@ -40,9 +40,9 @@ final class EventListener implements Listener
         if ($item->getTypeId() !== ItemTypeIds::FISHING_ROD || !($item instanceof Durable)) {
             return;
         }
+        $event->cancel();
 
         if ($player->hasItemCooldown($item)) {
-            $event->cancel();
             return;
         }
 
@@ -103,32 +103,35 @@ final class EventListener implements Listener
 
     private function findCastPosition(Player $player): ?Vector3
     {
-        $location = $player->getLocation();
         $world = $player->getWorld();
+        $position = $player->getEyePos();
+        $direction = $player->getDirectionVector();
+        $motion = $direction->multiply(1.5);
 
-        $t = (self::PITCH_NEAR - $location->pitch) / (self::PITCH_NEAR - self::PITCH_FAR);
-        $t = max(0.0, min(1.0, $t));
-        $distance = 1 + $t * (10 - 1);
-
-        $yaw = deg2rad($location->yaw);
-        $x = $location->x - sin($yaw) * $distance;
-        $z = $location->z + cos($yaw) * $distance;
-
-        $blockX = (int) floor($x);
-        $blockZ = (int) floor($z);
-        $eyeY = (int) floor($player->getEyePos()->y);
-
-        for ($y = $eyeY; $y >= $eyeY - self::MAX_SCAN_DEPTH; $y--) {
-            $block = $world->getBlockAt($blockX, $y, $blockZ);
-
-            if ($block instanceof Water) {
-                return new Vector3($x, $y + 0.9, $z);
-            }
-            if ($block->isSolid()) {
-                return null;
-            }
+        for($tick = 0; $tick < 40; $tick++) {
+            $nextPosition = $position->addVector($motion);
+            $block = $world->getBlock($nextPosition->floor());
         }
+        if($block instanceof Water){
+            $x = $nextPosition->x;
+            $z = $nextPosition->z;
 
+            $waterY = $nextPosition->y;
+
+            while(
+                $world->getBlockAt(
+                    (int) floor($x),
+                    (int) floor($waterY + 1),
+                    (int) floor($z)
+                )
+            ) {
+                $waterY++;
+            }
+            return new Vector3($x, $waterY + 1, $z);
+        }
+        $position = $nextPosition;
+        $motion = $motion->subtract(0, 0.03, 0);
+        $motion = $motion->multiply(0.99);
         return null;
     }
 
@@ -149,7 +152,7 @@ final class EventListener implements Listener
         $name = $display->hasCustomName() ? $display->getCustomName() : $display->getName();
 
 
-        $itemEntity = new ItemEntity(Location::fromObject($dropPosition->add(0, 2, 0), $world, lcg_value() * 360, 0), $display);
+        $itemEntity = new ItemEntity(Location::fromObject($dropPosition->add(0, 2, 0), $world, random_int(0,359), 0), $display);
         $itemEntity->setPickupDelay(300);
         $itemEntity->setDespawnDelay(60);
         $itemEntity->setNameTag($name);
@@ -171,6 +174,11 @@ final class EventListener implements Listener
     {
         $manager = Main::getInstance()->getSessionManager();
         $player = $event->getPlayer();
+        $hook = $manager->getFishingHook($player);
+
+        if(!$hook === null){
+            $hook->flagForDespawn();
+        }
 
         if ($manager->isFishing($player)) {
             $manager->stopFishing($player);

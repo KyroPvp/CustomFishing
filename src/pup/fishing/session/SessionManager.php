@@ -7,16 +7,10 @@ use pup\fishing\entities\FishingHook;
 
 final class SessionManager
 {
-    /** @var SessionManager */
-    private static SessionManager $instance;
     /** @var array<string, FishingSession> keyed by player name */
     private array $sessions = [];
 
     public int $waitChanceTicks = 120;
-    public function __construct()
-    {
-        self::$instance = $this;
-    }
 
     public function isFishing(Player $player): bool
     {

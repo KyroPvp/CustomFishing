@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace pup\fishing\utils;
 
+use Random\RandomException;
+
 final class WeightedRandom
 {
     /**
      * @param array<string|int, float|int> $weights
+     * @throws RandomException
      */
     public static function pick(array $weights): string|int|null
     {
@@ -22,7 +25,7 @@ final class WeightedRandom
             return null;
         }
 
-        $roll = lcg_value() * $total; // random float between 0 and $total
+        $roll = random_int(0, $total); // random float between 0 and $total
         $lastValid = null;
 
         foreach ($weights as $key => $weight) {
